@@ -3,11 +3,9 @@ The class ChatManager manages all users and their conversations in the
 form of a dictionary.
 
 Each user has a ChatConversation instance, which may include multiple
-previous conversations of the user (provided by the Google Gemini API).
+previous conversations of the user (provided by the Pollinations AI API).
 
-The class ImageChatManager is rather simple, as the images in Gemini Pro
-do not have a contextual environment. This class performs some tasks
-such as obtaining photos to addresses and so on.
+The class ImageChatManager handles image-related requests.
 """
 from io import BytesIO
 from typing import Dict
@@ -15,7 +13,7 @@ from typing import Dict
 import requests
 
 from .config import BOT_TOKEN
-from .gemini import ChatConversation, generate_text_with_image
+from .pollinations import ChatConversation, generate_text_with_image
 
 
 class ChatManager:
