@@ -3,7 +3,7 @@ from typing import Dict
 import requests
 from md2tgmd import escape
 
-from .config import BOT_TOKEN, defaut_photo_caption, send_message_log, send_photo_log, unnamed_user, unnamed_group
+from .config import BOT_TOKEN, send_message_log, send_photo_log, unnamed_user, unnamed_group
 from .printLog import send_log
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
@@ -37,6 +37,34 @@ def send_imageMessage(chat_id, text, imageID):
     return r
 
 
+def check_channel_membership(user_id: int, channel_username: str) -> bool:
+    """Check if user is a member of the specified channel"""
+    try:
+        # Add @ if not present and not an ID
+        if not channel_username.startswith('@') and not channel_username.startswith('-'):
+            channel_username = f"@{channel_username}"
+        
+        url = f"{TELEGRAM_API}/getChatMember"
+        params = {
+            "chat_id": channel_username,
+            "user_id": user_id
+        }
+        
+        response = requests.get(url, params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("ok"):
+                status = data.get("result", {}).get("status")
+                # User is considered joined if they are member, administrator, or creator
+                return status in ["member", "administrator", "creator"]
+        
+        return False
+    except Exception as e:
+        send_log(f"Error checking channel membership: {e}")
+        return False
+
+
 class Update:
     def __init__(self, update: Dict) -> None:
         self.update = update
@@ -46,7 +74,6 @@ class Update:
         self.is_group: bool = self._is_group()
         self.type = self._type()
         self.text = self._text()
-        self.photo_caption = self._photo_caption()
         self.file_id = self._file_id()
         #self.user_name = update["message"]["from"]["username"]
         self.user_name = update["message"]["from"].get("username", f" [{unnamed_user}](tg://openmessage?user_id={self.from_id})")
@@ -68,11 +95,6 @@ class Update:
             return "photo"
         else:
             return ""
-
-    def _photo_caption(self):
-        if self.type == "photo":
-            return self.update["message"].get("caption", defaut_photo_caption)
-        return ""
 
     def _text(self):
         if self.type == "text":

@@ -7,28 +7,40 @@ the user sent words or an image and deals with it accordingly.
 For text messages, it fires up the ChatManager class that keeps track of
 the back-and-forth with that user.
 
-As for images, they're handled with a simple response since Pollinations AI
-text endpoint doesn't support image analysis directly.
+Images are not supported as Pollinations AI text endpoint doesn't support
+image analysis.
 """
 
-from .auth import is_authorized
+from .auth import is_authorized, check_channel_join_required
 from .command import excute_command
-from .context import ChatManager, ImageChatManger
+from .context import ChatManager
 from .telegram import Update, send_message
-from .printLog import send_log,send_image_log
+from .printLog import send_log
 from .config import *
 
 chat_manager = ChatManager()
 
 
 def handle_message(update_data):
-
     update = Update(update_data)
     if update.is_group :
         log = f"{event_received}\n@{update.user_name} id:`{update.from_id}` {group} @{update.group_name} id:`{update.chat_id}`\n{the_content_sent_is}\n{update.text}\n```json\n{update_data}```"
     else:
         log = f"{event_received}\n@{update.user_name} id:`{update.from_id}`\n{the_content_sent_is}\n{update.text}\n```json\n{update_data}```"
     send_log(log)
+    
+    # Check if user has joined required channel (skip for groups and commands)
+    if not update.is_group and update.type != "command":
+        if REQUIRED_CHANNEL and not check_channel_join_required(update.from_id):
+            channel_display = REQUIRED_CHANNEL
+            if not channel_display.startswith('@') and not channel_display.startswith('-'):
+                channel_display = f"@{channel_display}"
+            
+            send_message(update.from_id, channel_join_required_info.format(channel=channel_display))
+            log = f"@{update.user_name} id:`{update.from_id}`{not_joined_channel},{the_content_sent_is}\n{update.text}"
+            send_log(log)
+            return
+
     authorized = is_authorized(update.is_group, update.from_id, update.user_name,  update.chat_id, update.group_name)
 
     if update.type == "command":
@@ -72,22 +84,13 @@ def handle_message(update_data):
         send_log(log)
 
     elif update.type == "photo":
-        chat = ImageChatManger(update.photo_caption, update.file_id)
-        response_text = chat.send_image()
-        print(f"update.message_id {update.message_id}")
-        # Use the reply_to_message_id parameter to let the bot reply to
-        # a specific image.
-        send_message(
-            update.chat_id, response_text, reply_to_message_id=update.message_id
-        )
-
-        photo_url = chat.tel_photo_url()
-        imageID = update.file_id
+        # Images are not supported with Pollinations AI text endpoint
+        send_message(update.chat_id, image_not_supported_info, reply_to_message_id=update.message_id)
+        
         if update.is_group:
-            log = f"@{update.user_name} id:`{update.from_id}` {group} @{update.group_name} id:`{update.chat_id}`[photo]({photo_url}),{the_accompanying_message_is}\n{update.photo_caption}\n{the_reply_content_is}\n{response_text}"
+            log = f"@{update.user_name} id:`{update.from_id}` {group} @{update.group_name} id:`{update.chat_id}` sent image - not supported"
         else:
-            log = f"@{update.user_name} id:`{update.from_id}`[photo]({photo_url}),{the_accompanying_message_is}\n{update.photo_caption}\n{the_reply_content_is}\n{response_text}"
-        send_image_log("", imageID)
+            log = f"@{update.user_name} id:`{update.from_id}` sent image - not supported"
         send_log(log)
 
     else:

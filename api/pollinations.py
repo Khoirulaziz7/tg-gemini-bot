@@ -49,13 +49,6 @@ def generate_content(prompt: str) -> str:
         return f"{pollinations_err_info}\n{repr(e)}"
 
 
-def generate_text_with_image(prompt: str, image_data) -> str:
-    """Generate text from prompt and image using Pollinations AI"""
-    # Note: Pollinations AI text endpoint doesn't support images directly
-    # This is a placeholder - you might need to use a different endpoint or approach
-    return "Image analysis is not supported with the current Pollinations AI text endpoint. Please send text only."
-
-
 class ChatConversation:
     """
     Manages ongoing chat conversation with Pollinations AI
